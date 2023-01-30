@@ -1,0 +1,73 @@
+version: "3.7"
+
+services:
+  auth:
+    container_name: auth
+    restart: unless-stopped
+    env_file:
+      - .env
+    build:
+      context: ./
+      dockerfile: docker/auth/Dockerfile
+    volumes:
+      - ./src:/var/www/html/src
+    depends_on:
+      - auth_db
+    ports:
+      - ${AUTH_PORT_EXTERNAL}:${AUTH_PORT_INTERNAL}
+
+  nginx:
+    image: ${NGINX_IMAGE}
+    container_name: nginx
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - ${NGINX_PORT_EXTERNAL}:${NGINX_PORT_INTERNAL}
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+#      - ./src:/var/www/html/auth
+    environment:
+      - NGINX_HOST=${NGINX_HOST}
+    depends_on:
+      - auth
+      - auth_db
+
+  auth_db:
+    image: ${REPOSITORY_IMAGE}
+    container_name: auth_db
+    restart: unless-stopped
+#    build:
+#      context: ./
+#      dockerfile: docker/auth_db/Dockerfile
+    ports:
+      - ${REPOSITORY_PORT_EXTERNAL}:${REPOSITORY_PORT_INTERNAL}
+    volumes:
+      - ./storage/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./temp/postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${REPOSITORY_DATABASE}
+      - POSTGRES_USER=${REPOSITORY_USER}
+      - POSTGRES_PASSWORD=${REPOSITORY_PASSWORD}
+
+  pgadmin:
+    image: ${PGADMIN_IMAGE}
+    container_name: pgadmin
+    restart: unless-stopped
+#    env_file:
+#      - .env
+    ports:
+      - ${PGADMIN_PORT_EXTERNAL}:${PGADMIN_PORT_INTERNAL}
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+    depends_on:
+      - auth_db
+    volumes:
+      - ./temp/pgadmin-data:/var/lib/pgadmin
+
+
+
+
+
+
